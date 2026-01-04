@@ -1,28 +1,39 @@
 const http = require('http');
 const fs = require('fs');
+const { isUtf8 } = require('buffer');
 
 const server = http.createServer((req,res)=>{
 
     const url = req.url;
     const method = req.method;
     
-    if(req.url == '/'){
+   if(req.url == '/'){
+         
+        fs.readFile("formData.txt",'utf8',(err,Data)=>{
+            let msg = Data ? Data.split("\n") : [];
 
-         res.setHeader('Content-Type','text/html');
+            const messageList = msg
+            .filter(item=>item.trim() !== "")
+            .map(item=> `<li>${item}</li>`)
+            .join("");
 
-      res.end(
-        `
-        <form action="/message" method="POST">
-        <label>Name:</label>
-        <input type="text" name="userName" />
-        <button type ="submit">ADD</button>
-        </form>
+            res.setHeader('Content-type','text/html');
 
-        `
-    );
-    return;
+            res.end(
+                `
+                <ul>${messageList}</ul>
 
-} 
+                 <form action="/message" method="POST">
+                 <label>Name:</label>
+                <input type="text" name="userName" />
+               <button type="submit">ADD</button>
+               </form>
+                `
+            );
+        })
+
+      }
+       
     if(req.url == "/message"  && method === "POST"){
         
         let body = [];
@@ -36,31 +47,25 @@ const server = http.createServer((req,res)=>{
 
             let buffer = Buffer.concat(body);
             let formData = buffer.toString();
-            let formValue = formData.split("=")[1];
+            let formValue = decodeURIComponent(formData.split("=")[1]);
 
-            fs.writeFile('formData.txt',formValue,()=>{
-                 
-                  res.statusCode = 302; // redirected;
-                  res.setHeader('Location','/');
-                  res.end()  
+            fs.readFile('formData.txt','utf8',(err,oldData)=>{
+                  let updatedValue = formValue + "\n" + (oldData || "");
+
+
+                  fs.writeFile('formData.txt',updatedValue,()=>{
+                     
+                    res.statusCode = 302; // redirected;
+                    res.setHeader('Location','/');
+                    res.end()
+
+                  })  
             });
             
           
         })
-}else{
-      if(req.url == '/read'){
-         
-        fs.readFile("formData.txt",(err,data)=>{
-            res.end(
-                `
-                <h1>${data.toString()}</h1>
-                `
-            );
-        })
+ }
 
-      }
-}
-    
 })
 
 
